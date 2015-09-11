@@ -17,6 +17,7 @@ object HmrcBuild extends Build {
       name := appName,
       targetJvm := "jvm-1.7",
       libraryDependencies ++= Seq(
+        Compile.httpVerbs,
         Test.scalaTest,
         Test.pegdown
       ),
@@ -26,7 +27,9 @@ object HmrcBuild extends Build {
 
 private object BuildDependencies {
 
+  val httpVerbsVersion = "1.10.0"
   object Compile {
+    val httpVerbs = "uk.gov.hmrc" %% "http-verbs" % httpVerbsVersion
   }
 
   sealed abstract class Test(scope: String) {
