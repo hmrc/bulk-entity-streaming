@@ -17,40 +17,14 @@
 package uk.gov.hmrc.stream
 
 import uk.gov.hmrc.play.audit.http.HeaderCarrier
-import uk.gov.hmrc.play.http.logging.RequestId
 
-import scala.collection.mutable.HashMap
-
-trait UsingBulkCharacterDataStream [T] {
+trait UsingBulkCharacterDataStream[T] extends CharEntityProcessor[T] {
 
   private[stream] def sourceData(resourceLocation: String): Iterator[Char] = scala.io.Source.fromURL(resourceLocation).iter
-  implicit def convert(data: String) : T
 
   def processEntitiesWith(deliminator: Char, resourceLocation: String)(f: T => Unit)(implicit hc: HeaderCarrier): Unit = {
     val resourceData = sourceData(resourceLocation)
     Iterator.continually(resourceData.foreach(processCharacter(deliminator, f))).takeWhile(_ => resourceData.hasNext).toList
-  }
-
-  private[stream] def processCharacter(deliminator: Char, entityProcessor: T => Unit)(characterFromStream: Char)(implicit hc: HeaderCarrier): Unit = {
-    entityLocator(deliminator)(characterFromStream) match {
-      case Some(entityFound) => entityProcessor(entityFound.toString())
-      case None => //do nothing
-    }
-  }
-
-  private val entityCharacterAccumulator = new HashMap[RequestId, StringBuilder]
-
-  private def entityLocator(deliminator: Char)(characterFromStream: Char)(implicit hc: HeaderCarrier): Option[StringBuilder] = {
-    val requestId = hc.requestId.getOrElse(throw new RuntimeException("Unable to process file. RequestId is missing!"))
-    if (characterFromStream == deliminator) {
-      entityCharacterAccumulator.remove(requestId)
-    } else {
-      entityCharacterAccumulator.get(requestId) match {
-        case Some(sb) => entityCharacterAccumulator put(requestId, sb.append(characterFromStream.toString))
-        case None => entityCharacterAccumulator put(requestId, new StringBuilder(characterFromStream.toString))
-      }
-      None
-    }
   }
 }
 

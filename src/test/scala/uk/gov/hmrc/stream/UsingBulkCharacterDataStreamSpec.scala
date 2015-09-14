@@ -22,67 +22,6 @@ import uk.gov.hmrc.play.http.logging.RequestId
 
 class UsingBulkCharacterDataStreamSpec extends WordSpecLike with Matchers {
 
-  "Processing each Character" should {
-    "only execute function when a deliminator is found with a trailing deliminator" in new UsingBulkCharacterDataStream[String] {
-      override implicit def convert(input: String): String = input
-
-      val counterInstance = new EntityCounter
-      implicit val hc = new HeaderCarrier(requestId = Some(RequestId("someRequestId")))
-
-      val functionToTest = processCharacter(',', counterInstance.keepTrackOfCallCount) _
-
-      functionToTest('a')
-      functionToTest('b')
-      functionToTest('c')
-      functionToTest(',')
-      functionToTest('d')
-      functionToTest('e')
-      functionToTest('f')
-      functionToTest(',')
-      functionToTest('g')
-      functionToTest('h')
-      functionToTest('i')
-      functionToTest(',')
-
-      counterInstance.counter shouldBe 3
-    }
-
-    "only execute function when a deliminator is found without a trailing deliminator" in new UsingBulkCharacterDataStream[String] {
-      override implicit def convert(input: String): String = input
-
-      val counterInstance = new EntityCounter
-      implicit val hc = new HeaderCarrier(requestId = Some(RequestId("someRequestId")))
-
-      val functionToTest = processCharacter(',', counterInstance.keepTrackOfCallCount) _
-
-      functionToTest('a')
-      functionToTest('b')
-      functionToTest('c')
-      functionToTest(',')
-      functionToTest('d')
-      functionToTest('e')
-      functionToTest('f')
-      functionToTest(',')
-      functionToTest('g')
-      functionToTest('h')
-      functionToTest('i')
-
-      counterInstance.counter shouldBe 2
-    }
-
-    "abort process when a request id is not present" in new UsingBulkCharacterDataStream[String] {
-      override implicit def convert(input: String): String = input
-
-      val counterInstance = new EntityCounter
-      implicit val hcMissingRequestId = new HeaderCarrier
-      val functionToTest = processCharacter(',', counterInstance.keepTrackOfCallCount) _
-
-      intercept[RuntimeException] {
-        functionToTest('a')
-      }.getMessage shouldBe "Unable to process file. RequestId is missing!"
-    }
-  }
-
   "Processing a stream of data" should {
     "execute a function for each deliminator segregated entity found in the data source" in new UsingBulkCharacterDataStream[String] {
       override implicit def convert(input: String): String = input

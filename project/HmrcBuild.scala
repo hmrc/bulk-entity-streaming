@@ -1,3 +1,4 @@
+import play.core.PlayVersion
 import sbt.Keys._
 import sbt._
 import uk.gov.hmrc.SbtAutoBuildPlugin
@@ -19,7 +20,8 @@ object HmrcBuild extends Build {
       libraryDependencies ++= Seq(
         Compile.httpVerbs,
         Test.scalaTest,
-        Test.pegdown
+        Test.pegdown,
+        Test.playTest
       ),
       Developers()
     )
@@ -35,6 +37,7 @@ private object BuildDependencies {
   sealed abstract class Test(scope: String) {
     val scalaTest = "org.scalatest" %% "scalatest" % "2.2.4" % scope
     val pegdown = "org.pegdown" % "pegdown" % "1.5.0" % scope
+    val playTest = "com.typesafe.play" %% "play-test" % PlayVersion.current % scope
   }
 
   object Test extends Test("test")
