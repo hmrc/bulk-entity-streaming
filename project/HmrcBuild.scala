@@ -10,13 +10,12 @@ object HmrcBuild extends Build {
   import BuildDependencies._
   import uk.gov.hmrc.DefaultBuildSettings._
 
-  val appName = "bulk-entity-streaming"
+  val nameApp = "bulk-entity-streaming"
 
   lazy val BulkEntityStreaming = (project in file("."))
     .enablePlugins(SbtAutoBuildPlugin, SbtGitVersioning)
     .settings(
-      name := appName,
-      targetJvm := "jvm-1.7",
+      scalaVersion := "2.11.7",
       libraryDependencies ++= Seq(
         Compile.httpVerbs,
         Test.scalaTest,
