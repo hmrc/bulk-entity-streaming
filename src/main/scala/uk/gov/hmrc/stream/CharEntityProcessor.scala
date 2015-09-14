@@ -31,6 +31,13 @@ trait CharEntityProcessor[T] {
     }
   }
 
+  def parseEntity(deliminator: Char)(characterFromStream: Char)(implicit hc: HeaderCarrier): Option[T] = {
+    entityLocator(deliminator)(characterFromStream) match {
+      case Some(entityFound) => Some(entityFound.toString())
+      case None => None
+    }
+  }
+
   private val entityCharacterAccumulator = new HashMap[RequestId, StringBuilder]
 
   private def entityLocator(deliminator: Char)(characterFromStream: Char)(implicit hc: HeaderCarrier): Option[StringBuilder] = {
@@ -44,5 +51,10 @@ trait CharEntityProcessor[T] {
       }
       None
     }
+  }
+
+  def flush()(implicit hc: HeaderCarrier): T = {
+    val requestId = hc.requestId.getOrElse(throw new RuntimeException("Unable to process file. RequestId is missing!"))
+    entityCharacterAccumulator.remove(requestId).toString
   }
 }
