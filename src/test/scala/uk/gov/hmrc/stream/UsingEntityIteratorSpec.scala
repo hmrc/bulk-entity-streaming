@@ -33,7 +33,7 @@ class UsingEntityIteratorSpec extends WordSpecLike with Matchers {
       val counterInstance = new EntityCounter
       implicit val hc = new HeaderCarrier(requestId = Some(RequestId("someRequestId")))
 
-      entities(';', "someLocation").foreach(counterInstance.keepTrackOfCallCount)
+      bulkEntities(';', "someLocation").foreach(counterInstance.keepTrackOfCallCount)
 
       counterInstance.counter shouldBe 4
     }
@@ -48,7 +48,7 @@ class UsingEntityIteratorSpec extends WordSpecLike with Matchers {
       val counterInstance = new EntityCounter
       implicit val hc = new HeaderCarrier(requestId = Some(RequestId("someRequestId")))
 
-      entities(';', "someLocation").foreach(counterInstance.keepTrackOfCallCount)
+      bulkEntities(';', "someLocation").foreach(counterInstance.keepTrackOfCallCount)
 
       counterInstance.counter shouldBe 5
     }

@@ -18,20 +18,17 @@ package uk.gov.hmrc.stream
 
 import uk.gov.hmrc.play.audit.http.HeaderCarrier
 
-
-trait UsingEntityIterator[T] {
-
-  implicit def convert(json: String): T
+trait UsingEntityIterator[T] extends EntityConverter[T] {
 
   private[stream] def sourceData(resourceLocation: String): Iterator[Char] = scala.io.Source.fromURL(resourceLocation).iter
 
-  def entities(deliminator: Char, resourceLocation: String)(implicit hc: HeaderCarrier, converter: String => T): Iterator[T] = {
-    new TransactionIterator(deliminator, sourceData(resourceLocation))
+  def bulkEntities(deliminator: Char, resourceLocation: String)(implicit hc: HeaderCarrier, converter: String => T): Iterator[T] = {
+    new CharEntityIterator(deliminator, sourceData(resourceLocation))
   }
 }
 
-private class TransactionIterator[T](deliminator: Char, streamIterator: Iterator[Char])(implicit hc: HeaderCarrier, converter: String => T) extends Iterator[T] with CharEntityProcessor[T] {
-  override implicit def convert(data: String): T = converter(data)
+private class CharEntityIterator[T](deliminator: Char, streamIterator: Iterator[Char])(implicit hc: HeaderCarrier, converter: String => T) extends Iterator[T] with CharEntityProcessor[T] {
+  override implicit def convert(entityRawData: String): T = converter(entityRawData)
 
   override def hasNext: Boolean = streamIterator.hasNext
 

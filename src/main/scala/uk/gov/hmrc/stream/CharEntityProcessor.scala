@@ -19,10 +19,10 @@ package uk.gov.hmrc.stream
 import uk.gov.hmrc.play.audit.http.HeaderCarrier
 import uk.gov.hmrc.play.http.logging.RequestId
 
+import scala.collection.mutable
 import scala.collection.mutable.HashMap
 
-trait CharEntityProcessor[T] {
-  implicit def convert(data: String) : T
+trait CharEntityProcessor[T] extends EntityConverter[T] {
 
   def processCharacter(deliminator: Char, entityProcessor: T => Unit)(characterFromStream: Char)(implicit hc: HeaderCarrier): Unit = {
     entityLocator(deliminator)(characterFromStream) match {
@@ -38,23 +38,29 @@ trait CharEntityProcessor[T] {
     }
   }
 
-  private val entityCharacterAccumulator = new HashMap[RequestId, StringBuilder]
+  def flush()(implicit hc: HeaderCarrier): T = {
+    entityCharacterAccumulator.remove(requestId).fold("")(_.toString())
+  }
+
+  def isEntityDataAvailable()(implicit hc: HeaderCarrier): Boolean = {
+    entityCharacterAccumulator.get(requestId).fold(false)(data => data.nonEmpty)
+  }
+
+  private val entityCharacterAccumulator = new mutable.HashMap[RequestId, StringBuilder]
 
   private def entityLocator(deliminator: Char)(characterFromStream: Char)(implicit hc: HeaderCarrier): Option[StringBuilder] = {
-    val requestId = hc.requestId.getOrElse(throw new RuntimeException("Unable to process file. RequestId is missing!"))
     if (characterFromStream == deliminator) {
       entityCharacterAccumulator.remove(requestId)
     } else {
       entityCharacterAccumulator.get(requestId) match {
-        case Some(sb) => entityCharacterAccumulator put(requestId, sb.append(characterFromStream.toString))
+        case Some(partialEntity) => entityCharacterAccumulator put(requestId, partialEntity.append(characterFromStream.toString))
         case None => entityCharacterAccumulator put(requestId, new StringBuilder(characterFromStream.toString))
       }
       None
     }
   }
 
-  def flush()(implicit hc: HeaderCarrier): T = {
-    val requestId = hc.requestId.getOrElse(throw new RuntimeException("Unable to process file. RequestId is missing!"))
-    entityCharacterAccumulator.remove(requestId).toString
+  private def requestId(implicit hc: HeaderCarrier): RequestId = {
+    hc.requestId.getOrElse(throw new RuntimeException("Unable to process file. RequestId is missing!"))
   }
 }
