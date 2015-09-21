@@ -20,7 +20,6 @@ import uk.gov.hmrc.play.audit.http.HeaderCarrier
 import uk.gov.hmrc.play.http.logging.RequestId
 
 import scala.collection.mutable
-import scala.collection.mutable.HashMap
 
 trait CharEntityProcessor[T] extends EntityConverter[T] {
 

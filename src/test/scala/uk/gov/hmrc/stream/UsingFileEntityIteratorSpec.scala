@@ -16,39 +16,41 @@
 
 package uk.gov.hmrc.stream
 
+import java.io.File
+
 import org.scalatest.{Matchers, WordSpecLike}
 import uk.gov.hmrc.play.audit.http.HeaderCarrier
 import uk.gov.hmrc.play.http.logging.RequestId
 
-class UsingEntityIteratorSpec extends WordSpecLike with Matchers {
+class UsingFileEntityIteratorSpec extends WordSpecLike with Matchers {
 
   "Processing a stream of data" should {
-    "execute a function for each deliminator segregated entity found in the data source" in new UsingEntityIterator[String] {
+    "execute a function for each deliminator segregated entity found in the data source" in new UsingFileEntityIterator[String] {
       override implicit def convert(input: String): String = input
 
-      override def sourceData(resourceLocation: String): Iterator[Char] = {
+      override def sourceData(resourceLocation: File): Iterator[Char] = {
         List[Char]('a', 'b', ';', 'c', 'd', ';', 'e', 'f', ';', 'g', 'h', ';').iterator
       }
 
       val counterInstance = new EntityCounter
       implicit val hc = new HeaderCarrier(requestId = Some(RequestId("someRequestId")))
 
-      bulkEntities(';', "someLocation").foreach(counterInstance.keepTrackOfCallCount)
+      bulkEntities(';', sourceData(new File("someLocation/file.ext"))).foreach(counterInstance.keepTrackOfCallCount)
 
       counterInstance.counter shouldBe 4
     }
 
-    "execute a function for each deliminator segregated entity found in the data source with a trailing entity" in new UsingEntityIterator[String] {
+    "execute a function for each deliminator segregated entity found in the data source with a trailing entity" in new UsingFileEntityIterator[String] {
       override implicit def convert(input: String): String = input
 
-      override def sourceData(resourceLocation: String): Iterator[Char] = {
+      override def sourceData(resourceLocation: File): Iterator[Char] = {
         List[Char]('a', 'b', ';', 'c', 'd', ';', 'e', 'f', ';', 'g', 'h', ';', 'i', 'j').iterator
       }
 
       val counterInstance = new EntityCounter
       implicit val hc = new HeaderCarrier(requestId = Some(RequestId("someRequestId")))
 
-      bulkEntities(';', "someLocation").foreach(counterInstance.keepTrackOfCallCount)
+      bulkEntities(';', sourceData(new File("someLocation/file.ext"))).foreach(counterInstance.keepTrackOfCallCount)
 
       counterInstance.counter shouldBe 5
     }

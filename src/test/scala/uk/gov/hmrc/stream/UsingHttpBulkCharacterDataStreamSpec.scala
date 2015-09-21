@@ -20,10 +20,10 @@ import org.scalatest.{Matchers, WordSpecLike}
 import uk.gov.hmrc.play.audit.http.HeaderCarrier
 import uk.gov.hmrc.play.http.logging.RequestId
 
-class UsingBulkCharacterDataStreamSpec extends WordSpecLike with Matchers {
+class UsingHttpBulkCharacterDataStreamSpec extends WordSpecLike with Matchers {
 
   "Processing a stream of data" should {
-    "execute a function for each deliminator segregated entity found in the data source" in new UsingBulkCharacterDataStream[String] {
+    "execute a function for each deliminator segregated entity found in the data source" in new UsingHttpBulkCharacterDataStream[String] {
       override implicit def convert(input: String): String = input
 
       override def sourceData(resourceLocation: String): Iterator[Char] = {
@@ -33,7 +33,7 @@ class UsingBulkCharacterDataStreamSpec extends WordSpecLike with Matchers {
       val counterInstance = new EntityCounter
       implicit val hc = new HeaderCarrier(requestId = Some(RequestId("someRequestId")))
 
-      processEntitiesWith(';', "someLocation")(counterInstance.keepTrackOfCallCount)
+      processEntitiesWith(';', sourceData("someLocation"))(counterInstance.keepTrackOfCallCount)
 
       counterInstance.counter shouldBe 4
     }

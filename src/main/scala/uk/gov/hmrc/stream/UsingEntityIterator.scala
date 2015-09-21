@@ -17,13 +17,15 @@
 package uk.gov.hmrc.stream
 
 import uk.gov.hmrc.play.audit.http.HeaderCarrier
+import uk.gov.hmrc.stream.source.{FileStreamSource, HttpStreamSource}
+
+trait UsingHttpEntityIterator[T] extends UsingEntityIterator[T] with HttpStreamSource
+trait UsingFileEntityIterator[T] extends UsingEntityIterator[T] with FileStreamSource
 
 trait UsingEntityIterator[T] extends EntityConverter[T] {
 
-  private[stream] def sourceData(resourceLocation: String): Iterator[Char] = scala.io.Source.fromURL(resourceLocation).iter
-
-  def bulkEntities(deliminator: Char, resourceLocation: String)(implicit hc: HeaderCarrier, converter: String => T): Iterator[T] = {
-    new CharEntityIterator(deliminator, sourceData(resourceLocation))
+  def bulkEntities(deliminator: Char, sourceData: => Iterator[Char])(implicit hc: HeaderCarrier, converter: String => T): Iterator[T] = {
+    new CharEntityIterator(deliminator, sourceData)
   }
 }
 

@@ -14,12 +14,13 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.stream
+package uk.gov.hmrc.stream.reactive
 
 import play.api.Play.current
 import play.api.libs.iteratee.{Enumerator, Iteratee}
 import play.api.libs.ws.{WS, WSResponseHeaders}
 import uk.gov.hmrc.play.audit.http.HeaderCarrier
+import uk.gov.hmrc.stream.CharEntityProcessor
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future

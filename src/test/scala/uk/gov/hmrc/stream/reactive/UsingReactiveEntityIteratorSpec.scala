@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.stream
+package uk.gov.hmrc.stream.reactive
 
 import org.scalatest.concurrent.Eventually
 import org.scalatest.time.{Seconds, Span}
@@ -24,6 +24,7 @@ import play.api.libs.ws.WSResponseHeaders
 import play.api.test.{DefaultAwaitTimeout, FutureAwaits}
 import uk.gov.hmrc.play.audit.http.HeaderCarrier
 import uk.gov.hmrc.play.http.logging.RequestId
+import uk.gov.hmrc.stream.EntityCounter
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
