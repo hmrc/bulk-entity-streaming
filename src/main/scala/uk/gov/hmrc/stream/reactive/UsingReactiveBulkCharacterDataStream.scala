@@ -16,6 +16,8 @@
 
 package uk.gov.hmrc.stream.reactive
 
+import java.io.File
+
 import play.api.Play.current
 import play.api.libs.iteratee.{Enumerator, Iteratee}
 import play.api.libs.ws.{WS, WSResponseHeaders}
@@ -34,5 +36,15 @@ trait UsingReactiveBulkCharacterDataStream[T] extends CharEntityProcessor[T] {
     reactiveSourceData(resourceLocation).map {
       case (_, responseByteArray) => responseByteArray run byteArrayProcessor
     }
+  }
+}
+
+trait UsingReactiveFileBulkCharacterDataStream[T] extends CharEntityProcessor[T] {
+  private[stream] def reactiveSourceData(resourceLocation: File): Enumerator[Array[Byte]] = Enumerator.fromFile(resourceLocation)
+
+  def processEntitiesWith(deliminator: Char, resourceLocation: File)(f: T => Unit)(implicit hc: HeaderCarrier): Future[Unit] = {
+    val byteArrayProcessor = Iteratee.foreach[Array[Byte]](chunkedArray => chunkedArray.map(_.toChar).map{char => processCharacter(deliminator, f)(char)})
+
+    reactiveSourceData(resourceLocation) run byteArrayProcessor
   }
 }

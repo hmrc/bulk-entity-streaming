@@ -16,6 +16,8 @@
 
 package uk.gov.hmrc.stream.reactive
 
+import java.io.File
+
 import play.api.Play.current
 import play.api.libs.iteratee.{Enumerator, Iteratee}
 import play.api.libs.ws.{WS, WSResponseHeaders}
@@ -39,6 +41,21 @@ trait UsingReactiveEntityIterator[T] extends CharEntityProcessor[T] {
           charArrayIterator =>
             new CharArrayEntityIterator[T](deliminator, charArrayIterator)
         }
+    }
+  }
+}
+
+trait UsingReactiveFileEntityIterator[T] extends CharEntityProcessor[T] {
+
+  private[stream] def reactiveSourceData(resourceLocation: File): Enumerator[Array[Byte]] = Enumerator.fromFile(resourceLocation)
+
+  def bulkEntities(deliminator: Char, resourceLocation: File)(implicit hc: HeaderCarrier, converter: String => T): Future[Iterator[T]] = {
+
+    def byteArrayToChar = Iteratee.getChunks[Array[Byte]].map(chunk => chunk).map(byteArrays => byteArrays.toIterator.map(byteArray => byteArray.map(_.toChar)))
+
+    reactiveSourceData(resourceLocation) run byteArrayToChar map {
+      charArrayIterator =>
+        new CharArrayEntityIterator[T](deliminator, charArrayIterator)
     }
   }
 }
