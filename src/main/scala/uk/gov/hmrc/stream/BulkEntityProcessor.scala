@@ -23,12 +23,16 @@ import scala.concurrent.Future
 
 trait BulkEntityProcessing[E] extends EntityCharProcessing[E] {
   def list(source: => Enumerator[Array[Byte]], deliminator: Char, convertToEntity: String => E): Future[List[E]]
+
   def listf(sourcef: => Future[Enumerator[Array[Byte]]], deliminator: Char, convertToEntity: String => E): Future[List[E]]
+
   def list(source: => Iterator[Char], deliminator: Char, convertToEntity: String => E): List[E]
 
   //TODO: Rename/restructure these functions to a more overloading approach
   def usingIteratorOfChars(source: => Iterator[Char], deliminator: Char, convertToEntity: String => E): Iterator[E]
+
   def usingEnumOfByteArrays(source: => Enumerator[Array[Byte]], deliminator: Char, convertToEntity: String => E): Future[Iterator[E]]
+
   def usingFutureEnumOfByteArrays(source: => Future[Enumerator[Array[Byte]]], deliminator: Char, convertToEntity: String => E): Future[Iterator[E]]
 }
 
@@ -84,10 +88,99 @@ class BulkEntityProcessor[E] extends BulkEntityProcessing[E] {
     }
   }
 
+  def usingXML(source: => Enumerator[Array[Byte]], startElementSequence: String, endElement: String): Future[Iterator[String]] = {
+    val byteArrayToChar = Iteratee.getChunks[Array[Byte]].map(chunk => chunk).map(byteArrays => byteArrays.toIterator.map(byteArray => byteArray.map(_.toChar)))
+
+    source run byteArrayToChar map {
+      charArrayIterator =>
+        new CharArraysIteratorElementAware(charArrayIterator, startElementSequence, endElement)
+    }
+  }
+
   def usingFutureEnumOfByteArrays(source: => Future[Enumerator[Array[Byte]]], deliminator: Char, convertToEntity: String => E): Future[Iterator[E]] = {
     source.flatMap {
       usingEnumOfByteArrays(_, deliminator, convertToEntity)
     }
+  }
+}
+
+private class CharArraysIteratorElementAware(source: Iterator[Array[Char]], startElementSequence: String, endElement: String) extends Iterator[String] {
+
+  private val characterQueue = new scala.collection.mutable.Queue[Char]()
+  private val unidentifiedCharacterQueue = new scala.collection.mutable.Queue[Char]()
+  private val entityQueue = scala.collection.mutable.Queue[String]()
+
+  override def hasNext: Boolean = source.hasNext || characterQueue.nonEmpty || entityQueue.nonEmpty
+
+  override def next(): String = {
+    val streamDataToEntities = processElementData(startElementSequence, endElement) _
+
+    def processNextArray = source.next().foldLeft(ElementContainer(emptyUnidentifiedCharacterQueue(), emptyCharacterQueue(), List[String]()))((entityContainer, streamCharacter) => {
+      streamDataToEntities(entityContainer, streamCharacter)
+    })
+
+    if (source.hasNext && entityQueue.isEmpty) {
+      val latestEntityDataFetched = processNextArray
+      latestEntityDataFetched.constructedEntities.foreach(entityQueue.enqueue(_))
+      latestEntityDataFetched.partialXmlData.fold()(x => x.toCharArray.foreach(characterQueue.enqueue(_)))
+      latestEntityDataFetched.unidentifiedCandidateData.fold()(z => z.toCharArray.foreach(unidentifiedCharacterQueue.enqueue(_)))
+    }
+
+    if (entityQueue.nonEmpty) return entityQueue.dequeueFirst(_ => true).getOrElse(throw new RuntimeException("The Iterator is out of sync! The hasNext returned true but the next function cannot find anything to return!"))
+    if (entityQueue.isEmpty && !source.hasNext && characterQueue.nonEmpty) return emptyCharacterQueue().fold("")(x => x)
+    next()
+  }
+
+  private def processElementData(startElementSequence: String, endElement: String)(entityContainer: ElementContainer[String], input: Char): ElementContainer[String] = {
+
+    def allocateInputCharacter(entityContainer: ElementContainer[String], input: Char): ElementContainer[String] = {
+      entityContainer match {
+        case ElementContainer(None, Some(xml), _) => entityContainer.copy(partialXmlData = Some(xml.concat(input.toString)))
+        case ElementContainer(Some(data), None, _) => entityContainer.copy(unidentifiedCandidateData = Some(data.concat(input.toString)))
+        case _ => entityContainer.copy(unidentifiedCandidateData = Some(input.toString))
+      }
+    }
+
+    def processAllocatedDataContainer(allocatedDataContainer: ElementContainer[String], startElementSequence: String, endElement: String): ElementContainer[String] = {
+      allocatedDataContainer match {
+        case ElementContainer(None, Some(partialXml), _) => {
+          if (partialXml.contains(endElement)) {
+            allocatedDataContainer.copy(None, None, allocatedDataContainer.constructedEntities :+ partialXml)
+          } else {
+            allocatedDataContainer
+          }
+        }
+        case ElementContainer(Some(unidentifiedData), None, _) => {
+          if (unidentifiedData.contains(startElementSequence)) {
+            allocatedDataContainer.copy(None, substring(unidentifiedData, startElementSequence), allocatedDataContainer.constructedEntities)
+          } else {
+            allocatedDataContainer
+          }
+        }
+        case _ => allocatedDataContainer
+      }
+    }
+
+    def substring(input: String, startElementPattern: String): Option[String] = {
+      if (input.contains(startElementPattern)) Some(input.substring(input.indexOf(startElementPattern))) else  None
+    }
+    processAllocatedDataContainer(allocateInputCharacter(entityContainer, input), startElementSequence, endElement)
+  }
+
+  private[stream] case class ElementContainer[String](unidentifiedCandidateData: Option[String], partialXmlData: Option[String], constructedEntities: List[String])
+
+  private[stream] def emptyUnidentifiedCharacterQueue(): Option[String] = {
+    val unidentifiedData = unidentifiedCharacterQueue.dequeueAll(_ => true).foldLeft("")((partialEntityString, character) => {
+      partialEntityString + character.toString
+    })
+    if (!unidentifiedData.isEmpty) Some(unidentifiedData) else None
+  }
+
+  private[stream] def emptyCharacterQueue(): Option[String] = {
+    val characterData = characterQueue.dequeueAll(_ => true).foldLeft("")((partialEntityString, character) => {
+      partialEntityString + character.toString
+    })
+    if (!characterData.isEmpty) Some(characterData) else None
   }
 }
 
