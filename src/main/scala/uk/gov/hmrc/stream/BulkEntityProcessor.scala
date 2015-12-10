@@ -97,6 +97,17 @@ class BulkEntityProcessor[E] extends BulkEntityProcessing[E] {
     }
   }
 
+  def usingXMLf(sourcef: => Future[Enumerator[Array[Byte]]], startElementSequence: String, endElement: String): Future[Iterator[String]] = {
+    val byteArrayToChar = Iteratee.getChunks[Array[Byte]].map(chunk => chunk).map(byteArrays => byteArrays.toIterator.map(byteArray => byteArray.map(_.toChar)))
+
+    sourcef flatMap {
+      source => source run byteArrayToChar map {
+        charArrayIterator =>
+          new CharArraysIteratorElementAware(charArrayIterator, startElementSequence, endElement)
+      }
+    }
+  }
+
   def usingFutureEnumOfByteArrays(source: => Future[Enumerator[Array[Byte]]], deliminator: Char, convertToEntity: String => E): Future[Iterator[E]] = {
     source.flatMap {
       usingEnumOfByteArrays(_, deliminator, convertToEntity)
