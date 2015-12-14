@@ -144,6 +144,9 @@ private class CharArraysIteratorElementAware(source: Iterator[Array[Char]], star
 
   private def processElementData(startElementSequence: String, endElement: String)(entityContainer: ElementContainer[String], input: Char): ElementContainer[String] = {
 
+    val tableTitles = List[String]("Other_Grants_V2", "Other_Options_V2", "Other_Acquisition_V2", "Other_RestrictedSecurities_V2",
+      "Other_OtherBenefits_V2", "Other_Convertible_V2", "Other_Notional_V2", "Other_Enhancement_V2", "Other_Sold_V2")
+
     def allocateInputCharacter(entityContainer: ElementContainer[String], input: Char): ElementContainer[String] = {
       entityContainer match {
         case ElementContainer(None, Some(xml), _) => entityContainer.copy(partialXmlData = Some(xml.concat(input.toString)))
@@ -165,11 +168,19 @@ private class CharArraysIteratorElementAware(source: Iterator[Array[Char]], star
           if (unidentifiedData.contains(startElementSequence)) {
             allocatedDataContainer.copy(None, substring(unidentifiedData, startElementSequence), allocatedDataContainer.constructedEntities)
           } else {
-            allocatedDataContainer
+            searchForTitle(unidentifiedData) match {
+              case Some(titleFound) => allocatedDataContainer.copy(None, None, allocatedDataContainer.constructedEntities :+ titleFound)
+              case _ => allocatedDataContainer
+            }
           }
         }
         case _ => allocatedDataContainer
       }
+    }
+
+    def searchForTitle(unidentifiedData: String): Option[String] = {
+      val titlesFound = tableTitles.filter(title => unidentifiedData.contains(title))
+      if(titlesFound.nonEmpty) Some(titlesFound.head) else None
     }
 
     def substring(input: String, startElementPattern: String): Option[String] = {
